@@ -5,3 +5,4 @@ streamlit
 PyPDF2
 python-docx
 openai
+llama-hub unstructured
