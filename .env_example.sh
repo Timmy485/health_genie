@@ -1,3 +1,3 @@
-DEBUG=True
-PORT=5000
-OPENAI_API_KEY=''
+# flask app settings
+DEBUG=<1-or-0-or-True-or-False>
+FLASK_ENV=''

@@ -47,8 +47,6 @@ uploaded_file = st.file_uploader(
 # Check if a file has been uploaded
 if uploaded_file is not None:
     # Load the document
-    st.write("Loading document...")
-
     file_extension = uploaded_file.name.split(".")[-1]
 
     if file_extension == "pdf":
@@ -66,66 +64,57 @@ if uploaded_file is not None:
         # Read text directly from TXT file
         text = uploaded_file.getvalue().decode("utf-8")
 
-    # Display extracted text
-    st.write("Document loaded successfully!")
+    st.markdown("### Data Preview")
     
-    preview_length = 100  # Number of words for preview
-    preview_text = f"{text[:1000]} ..."
-    # st.text(preview_text)
-
-    # Send extracted text via API to Flask service
-    api_url = "https://simpimedi-assist.onrender.com/"
-    response = requests.post(api_url, data=text.encode("utf-8"))
-
-    # Check if the request was successful
-    if response.status_code == 200:
-        st.success("Extracted text sent successfully to the Flask service!")
-    else:
-        st.error(
-            f"Failed to send extracted text to the Flask service. Status code: {response.status_code}"
-        )
-
-    # Extract the message from the response JSON
-    response_json = response.json()
-    message = response_json.get("response", {}).get("message", "")  
-
-    # # Split the page into two columns
-    # left_column, right_column = st.columns(2)
-
-    # # Content for the left column (OpenAI results)
-    # with left_column:
-    #     st.subheader("OpenAI Results")
-    #     # Add content specific to OpenAI results
-    #     api_key = os.environ.get("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
-    #     client = OpenAI(api_key=api_key,)
-
-    #     query = f"""
-    #     Assume you're a patient with limited medical knowledge.
-    #     You've received an MRI scan report, but it's filled with complex medical jargon.
-    #     You want the report explained to you in plain English so you can understand it better.
-    #     Break down the MRI findings and explain any abnormalities or conditions detected.
-    #     Include details on what each part of the MRI image represents and how it relates to your health.
-    #     Provide insights into potential treatment options or further diagnostic tests based on the MRI findings.
-    #     Provide clarification on any terms or concepts you're unfamiliar with.
+    formatted_text = text.replace('\n', '<br>')
+    # Create a preview with custom HTML and CSS
+    preview_html = """
+    <style>
+    .preview-container {
+        border: 2px solid #007BFF;  # Blue border
+        border-radius: 5px; 
+        overflow-y: auto; 
+        height: 500px; 
+        padding: 10px;
+    }
+    </style>
+    <div class="preview-container">""" + formatted_text + "</div>"
         
-    #     Medical report: {text} 
-    #     """
+    st.markdown(preview_html, unsafe_allow_html=True) 
 
-    #     chat_completion = client.chat.completions.create(
-    #         messages=[
-    #             {
-    #                 "role": "user",
-    #                 "content": query,
-    #             }
-    #         ],
-    #         model="gpt-3.5-turbo",
-    #     )
-    #     st.write(f"Response message: {chat_completion.choices[0].message.content}")
 
-    # # Content for the right column (OpenAI + RAG results)
-    # with right_column:
-    #     st.subheader("OpenAI + RAG Results")
-    #     # Add content for OpenAI + RAG results
-    #     st.write(f"Response message: {message}")
+    api_key = os.environ.get("OPENAI_API_KEY") or st.secrets["OPENAI_API_KEY"]
+    client = OpenAI(api_key=api_key,)
 
-    st.write(f"Response message: {message}")
+    query = f"""
+    Assume you are a patient with limited medical knowledge who has received a medical report filled with complex terminology. You are seeking a clearer understanding of this report in two parts:
+
+    1. **Report Explanation**: First, break down the medical report, keeping the original terms but explaining their significance. Detail what each finding or measurement within the report indicates about your health. Include any abnormalities or conditions detected, explaining what each part of the scan or test represents. 
+
+    2. **Simplified Explanation**: Next, provide a simplified explanation of the report's findings as if explaining to a complete layperson or as though you were explaining it to a two-year-old. This should include:
+    - A plain English summary of any conditions or abnormalities found.
+    - Insights into how these findings relate to your overall health.
+    - Suggestions for potential treatment options or further diagnostic tests, based ONLY on the report's findings.
+    - Clarification of any complex terms or concepts in very simple language, avoiding medical jargon.
+
+    Please ensure that while simplifying, you do not omit essential medical terms; rather, introduce them with their explanations to ensure the patient fully understands their report.
+
+    Medical report: {text}
+    """
+
+
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a knowledgeable agent specializing in the medical domain, proficient in interpreting and analyzing medical reports with precision and expertise.",
+            },
+            {
+                "role": "user", 
+                "content": query
+            }
+        ],
+        model="gpt-3.5-turbo",
+    )
+
+    st.write(chat_completion.choices[0].message.content)
